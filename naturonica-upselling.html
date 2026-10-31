@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Naturonica · Motor de Upselling y Cross-selling</title>
+<style>
+/* ===== VARIABLES DE TEMA (claro/oscuro) ===== */
+:root{--green:#2c7a3f;--green-d:#1f5a2d;--gold:#d4a017;--warn:#ffc107;--bad:#d9534f;
+--bg:#f4f7f6;--card:#fff;--text:#223;--muted:#667;--line:#dde6e0;--chip:#eaf3ec}
+body.dark{--bg:#14201a;--card:#1d2c24;--text:#e8f0ea;--muted:#9fb3a6;--line:#2f4538;--chip:#26392e}
+*{box-sizing:border-box}
+body{margin:0;font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text)}
+header{background:var(--green);color:#fff;padding:12px 20px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
+header h1{margin:0;font-size:1.25rem}
+header button{background:rgba(255,255,255,.2);color:#fff;border:0;padding:8px 14px;border-radius:20px;cursor:pointer;font-size:.9rem}
+/* ===== LAYOUT 30/40/30 ===== */
+main{display:grid;grid-template-columns:30% 40% 30%;gap:14px;padding:14px;align-items:start}
+@media(max-width:900px){main{grid-template-columns:1fr}}
+.col{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px}
+h2{font-size:1.05rem;color:var(--green);margin:14px 0 8px}h2:first-child{margin-top:0}
+[data-theme] h2{color:var(--green)}body.dark h2{color:#6fcf87}
+/* ===== CHIPS ===== */
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{background:var(--chip);color:var(--text);border:1px solid var(--line);border-radius:18px;padding:8px 12px;cursor:pointer;font-size:.88rem;font-family:inherit}
+.chip.on{background:var(--green);color:#fff;border-color:var(--green)}
+.btn{width:100%;border:0;border-radius:10px;padding:14px;font-size:1.05rem;cursor:pointer;font-weight:600;margin-top:10px}
+.btn.main{background:var(--green);color:#fff}.btn.main:hover{background:var(--green-d)}
+.btn.sec{background:transparent;border:1px solid var(--line);color:var(--text);padding:10px;font-size:.95rem}
+label.f{display:block;font-size:.85rem;color:var(--muted);margin-top:8px}
+input,select{width:100%;padding:8px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--text);font-family:inherit}
+/* ===== TARJETAS ===== */
+.pc{border:1px solid var(--line);border-left:6px solid var(--green);border-radius:10px;padding:12px;margin-bottom:14px}
+.pc.premium{border-left-color:var(--gold)}.pc.offered{opacity:.65}
+.pc h3{margin:0;font-size:1.5rem}
+.badge{display:inline-block;font-size:.72rem;padding:2px 8px;border-radius:10px;background:var(--chip);margin-right:4px}
+.badge.up{background:var(--gold);color:#fff}.badge.cs{background:var(--green);color:#fff}
+.phrase{font-style:italic;color:var(--gold);font-weight:600;margin:4px 0}
+.why{font-size:.9rem;margin:6px 0}
+.alert{border-radius:8px;padding:8px 10px;margin:6px 0;font-size:.88rem;font-weight:600}
+.alert.warn{background:var(--warn);color:#3a2e00}.alert.bad{background:var(--bad);color:#fff}
+table.pr{width:100%;border-collapse:collapse;font-size:.85rem;margin:8px 0}
+.pr th{background:var(--green);color:#fff;padding:5px}.pr td{padding:5px;text-align:center;border-bottom:1px solid var(--line)}
+.pr td.gold{color:var(--gold);font-weight:700}
+.pr tr.hot{background:rgba(212,160,23,.15)}.pr tr.best{background:rgba(44,122,63,.18)}
+.sv{display:block;font-size:.7rem;color:var(--green);font-weight:600}body.dark .sv{color:#6fcf87}
+.tag{font-size:.65rem;background:var(--gold);color:#fff;border-radius:6px;padding:1px 5px;margin-left:3px}
+.row{display:flex;gap:6px}.row button{flex:1;padding:9px;border-radius:8px;border:1px solid var(--green);background:transparent;color:var(--text);cursor:pointer}
+.row button.on{background:var(--green);color:#fff}
+ol.script{padding-left:20px;font-size:.92rem}ol.script li{margin-bottom:8px}
+.avoid{background:rgba(217,83,79,.12);border:2px solid var(--bad);border-radius:10px;padding:10px;margin-top:10px}
+.avoid h2{color:var(--bad)!important}
+.disc{background:var(--card);border-top:3px solid var(--warn);padding:12px 20px;font-size:.8rem;color:var(--muted);position:sticky;bottom:0}
+.empty{color:var(--muted);text-align:center;padding:30px 10px}
+.toast{position:fixed;bottom:70px;left:50%;transform:translateX(-50%);background:var(--green);color:#fff;padding:10px 18px;border-radius:20px;display:none}
+</style>
+</head>
+<body>
+<header><h1>🌿 Naturonica · Motor de Upselling & Cross-selling</h1><button id="dk">🌙 Modo oscuro</button></header>
+<main>
+<section class="col">
+<h2>👤 Cliente</h2>
+<label class="f">Nombre</label><input id="cname" placeholder="Nombre del cliente">
+<label class="f">Días desde la última compra</label><input id="days" type="number" min="0" value="30">
+<h2>🛒 Productos que ya compró</h2><div class="chips" id="bought"></div>
+<h2>💬 Síntomas que menciona</h2><div class="chips" id="symps"></div>
+<button class="btn main" id="gen">🔍 Generar Oportunidades</button>
+<button class="btn sec" id="clr">🔄 Limpiar selección</button>
+</section>
+<section class="col">
+<h2>🎯 Oportunidades de Venta</h2>
+<label class="f">Filtrar por categoría</label><select id="cat"></select>
+<div id="recs" style="margin-top:10px"><div class="empty">Selecciona productos y síntomas y pulsa “Generar Oportunidades”.</div></div>
+</section>
+<section class="col">
+<h2>🎙️ Guion de Venta Consultiva</h2><div id="script"><div class="empty">El guion aparecerá aquí.</div></div>
+<div id="avoid"></div>
+</section>
+</main>
+<div class="disc">⚠️ Los complementos alimenticios no deben utilizarse como sustitutos de una dieta variada y equilibrada ni de un estilo de vida saludable. Mantener fuera del alcance de los niños más pequeños. No diagnosticar enfermedades ni prometer curas. Consulte el etiquetado y las advertencias del envase antes de usar.</div>
+<div class="toast" id="toast"></div>
+<script>
+/* ===== CATÁLOGO =====
+   ing: claves normalizadas de ingredientes (se usan para detectar duplicidad).
+   tier: 'premium' (upselling) | 'standard' (cross-selling). Para añadir un producto, añade un objeto aquí. */
+const P=[
+{id:'immucaps',n:'Immucaps',t:'Inmunidad y defensas',cat:'Defensas',pres:'20 cápsulas',tier:'premium',ing:['vitamina c','vitamina d3','vitamina e','vitaminas b','zinc'],
+ val:'aporta vitaminas C, D3, E, grupo B y zinc que contribuyen al funcionamiento normal del sistema inmunitario'},
+{id:'neiroflex',n:'Neiroflex',t:'Articulaciones y movilidad',cat:'Articulaciones',pres:'30 cápsulas',tier:'premium',ing:['glucosamina','condroitina','msm','zinc','cobre'],
+ val:'combina glucosamina, condroitina y MSM como apoyo natural para articulaciones y movilidad'},
+{id:'omegazol',n:'Omegazol',t:'Omega-3 cardiovascular',cat:'Cardiovascular',pres:'cápsulas (1 al día)',tier:'standard',ing:['omega-3'],
+ val:'aporta ácidos grasos Omega-3 que contribuyen al normal funcionamiento del corazón'},
+{id:'calmformule',n:'Calmformule',t:'Estrés y sueño',cat:'Relajación / Sueño',pres:'10 cápsulas',tier:'premium',ing:['magnesio','gaba','rodiola','melisa'],
+ val:'une magnesio, GABA, rodiola y melisa para apoyar la relajación y el descanso'},
+{id:'diabexol',n:'Diabexol Pro',t:'Control de azúcar',cat:'Metabolismo',pres:'cápsulas',tier:'premium',ing:['morera','gymnema','corteza de pino','enebro','cromo'],
+ val:'con morera blanca, gymnema y cromo, que contribuye al mantenimiento de niveles normales de glucosa en sangre'},
+{id:'formaksil',n:'Formaksil',t:'Energía y metabolismo',cat:'Metabolismo',pres:'30 cápsulas',tier:'standard',ing:['vitaminas b','cromo','rucula','morera'],
+ val:'aporta vitaminas del grupo B y cromo que ayudan al metabolismo energético normal'},
+{id:'hyponorm',n:'HypoNorm',t:'Circulación y presión',cat:'Circulación',pres:'30 cápsulas',tier:'premium',ing:['olivo','rucula','vitamina c','vitaminas b'],
+ val:'combina hoja de olivo, rúcula y vitaminas como apoyo a la circulación'},
+{id:'vigoraten',n:'Vigoraten',t:'Vitalidad masculina',cat:'Salud masculina',pres:'20 cápsulas',tier:'premium',ing:['ortiga','palma enana','tribulus','maca','arandano','citrulina','selenio'],
+ val:'reúne maca, tribulus, L-citrulina y selenio como apoyo a la vitalidad masculina'},
+{id:'masculanix',n:'Masculanix',t:'Próstata y hombre adulto',cat:'Salud masculina',pres:'cápsulas (1 al día)',tier:'premium',ing:['palma enana','epilobio','ortiga','zinc'],
+ val:'combina palma enana, epilobio, ortiga y zinc como apoyo natural para el hombre adulto'},
+{id:'feminavital',n:'Feminavital',t:'Mujer y equilibrio hormonal',cat:'Salud femenina',pres:'10 cápsulas',tier:'premium',ing:['trebol rojo','sauzgatillo','vitaminas b'],
+ val:'combina trébol rojo, sauzgatillo y vitaminas como apoyo al equilibrio de la mujer'},
+{id:'qeepyb',n:'Qeep Young & Beauty',t:'Belleza y antienvejecimiento',cat:'Belleza',pres:'cápsulas',tier:'premium',ing:['inulina','clavo','calabaza','ajo','vitamina e','vitamina d3','vitaminas b','biotina','zinc','selenio','cromo','yodo'],
+ val:'aporta biotina, zinc, selenio y vitaminas que contribuyen al mantenimiento de piel, cabello y uñas normales'},
+{id:'qeepclean',n:'Qeep Clean',t:'Depuración y detox',cat:'Depuración',pres:'cápsulas (1 al día)',tier:'standard',ing:['cardo mariano','jengibre','espirulina','coenzima q10','zinc','ajo'],
+ val:'con cardo mariano, jengibre y espirulina como apoyo a la depuración natural del organismo'},
+{id:'toxofil',n:'Toxofil',t:'Limpieza profunda',cat:'Depuración',pres:'cápsulas',tier:'standard',ing:['clavo','ajenjo','calabaza','ajo','jengibre'],
+ val:'combina clavo, ajenjo, calabaza, ajo y jengibre como programa de limpieza profunda'},
+{id:'adenofrin',n:'Adenofrin',t:'Nutrición masculina avanzada',cat:'Salud masculina',pres:'cápsulas',tier:'premium',ing:['extractos vegetales','citrulina','selenio'],
+ val:'aporta 5 extractos vegetales, L-citrulina-DL-malato y selenio como nutrición masculina avanzada'},
+{id:'cellufol',n:'Cellufol',t:'Gel corporal zonas problemáticas',cat:'Cuidado corporal',pres:'Gel (uso tópico)',tier:'standard',ing:['aceites vegetales'],
+ val:'es un gel de uso tópico con aceites y extractos vegetales para el cuidado de las zonas más delicadas del cuerpo'}
+];
+const byId=Object.fromEntries(P.map(p=>[p.id,p]));
+
+/* ===== FRASES COMERCIALES (exactas) ===== */
+const PREMIUM=['Fórmula natural de apoyo','Complejo de fortalecimiento natural','Fórmula revitalizante','Programa de bienestar natural','Complejo natural de vitalidad','Fórmula de apoyo integral'];
+const STANDARD=['Refuerzo natural','Fórmula de cuidado y bienestar','Complejo nutricional avanzado','Programa de fortalecimiento natural','Fórmula natural','Fórmula avanzada','Fórmula fortalecedora','Complejo natural','Complejo nutricional','Suplemento natural','Fórmula concentrada','Fórmula de bienestar','Solución natural','Apoyo natural','Complemento natural','Programa natural','Cuidado natural'];
+
+/* ===== PRECIOS (España) [cantidad]:[Basa,TM,FIZ] ===== */
+const PRICES={2:[39,37,36],3:[74,70,55],4:[96,94,88],5:[116,110,108],6:[124,120,118],7:[132,128,125],8:[140,136,132],9:[148,144,139],10:[156,152,146]};
+const HOT=3,BEST=10; // pack más vendido / mejor ahorro
+
+/* ===== SÍNTOMAS -> productos (orden = prioridad) ===== */
+const S={
+'Dolor articular / Rigidez':['neiroflex','omegazol'],
+'Estrés / Ansiedad':['calmformule','immucaps'],
+'Problemas de sueño':['calmformule'],
+'Cansancio / Fatiga':['formaksil','immucaps'],
+'Defensas bajas / Resfriados frecuentes':['immucaps'],
+'Retención de líquidos':['cellufol','qeepclean','hyponorm'],
+'Problemas digestivos':['qeepclean','toxofil'],
+'Falta de concentración':['omegazol','calmformule'],
+'Presión arterial elevada':['hyponorm','omegazol'],
+'Azúcar en sangre alto':['diabexol','formaksil'],
+'Menopausia / Sofocos':['feminavital','qeepyb'],
+'Salud de la próstata':['masculanix','omegazol'],
+'Vitalidad masculina':['vigoraten','adenofrin'],
+'Piel / Cabello / Uñas débiles':['qeepyb','cellufol'],
+'Sobrepeso / Metabolismo lento':['formaksil','diabexol','cellufol'],
+'Inflamación general':['omegazol','neiroflex'],
+'Quiero desintoxicarme':['qeepclean','toxofil'],
+'Envejecimiento / Antioxidantes':['qeepyb','immucaps']
+};
+
+/* ===== SINERGIAS recomendadas (par no ordenado) ===== */
+const SYN=[['neiroflex','omegazol','articulación + antiinflamatorio'],['neiroflex','immucaps','movilidad + defensas'],['calmformule','immucaps','el estrés baja las defensas'],['calmformule','omegazol','relajación + apoyo cognitivo'],['diabexol','formaksil','sinergia metabólica'],['diabexol','hyponorm','azúcar + circulación'],['vigoraten','omegazol','masculino + cardiovascular'],['masculanix','omegazol','próstata + antiinflamatorio'],['feminavital','qeepyb','mujer + belleza'],['qeepclean','toxofil','depuración profunda'],['adenofrin','vigoraten','vitalidad masculina integral'],['cellufol','qeepyb','cuidado interno + externo']];
+const synOf=(a,b)=>SYN.find(s=>(s[0]==a&&s[1]==b)||(s[0]==b&&s[1]==a));
+// Pares con advertencia específica (se añade a la alerta genérica)
+const NOTES={'qeepclean|toxofil':'Depuración profunda: comparten jengibre y ajo. Usar con cuidado y no alargar sin pausa.','diabexol|formaksil':'Comparten morera y cromo: OK, pero vigilar la dosis total.'};
+const noteOf=(a,b)=>NOTES[a+'|'+b]||NOTES[b+'|'+a]||'';
+const shared=(a,b)=>a.ing.filter(i=>b.ing.includes(i));
+
+/* ===== ESTADO ===== */
+const selB=new Set(),selS=new Set(),offered=new Set();let results=[],blocked=[];
+const $=id=>document.getElementById(id);
+
+/* ===== UI: chips y filtro ===== */
+function chips(el,items,set,lab){el.innerHTML='';items.forEach(it=>{const b=document.createElement('button');b.className='chip';b.textContent=lab(it);
+ b.onclick=()=>{set.has(it.id||it)?set.delete(it.id||it):set.add(it.id||it);b.classList.toggle('on')};el.appendChild(b)})}
+chips($('bought'),P,selB,p=>p.n);chips($('symps'),Object.keys(S),selS,s=>s);
+$('cat').innerHTML='<option value="">Todas las categorías</option>'+[...new Set(P.map(p=>p.cat))].map(c=>`<option>${c}</option>`).join('');
+$('cat').onchange=renderRecs;
+$('dk').onclick=()=>{document.body.classList.toggle('dark');$('dk').textContent=document.body.classList.contains('dark')?'☀️ Modo claro':'🌙 Modo oscuro'};
+
+/* ===== MOTOR ===== */
+function generate(){
+ const days=parseInt($('days').value)||0, bought=[...selB].map(i=>byId[i]);
+ const score={};blocked=[];results=[];
+ Object.entries(S).forEach(([s,ids])=>{if(!selS.has(s))return;ids.forEach((id,i)=>{(score[id]=score[id]||{pts:0,sy:[]});score[id].pts+=3-Math.min(i,2);score[id].sy.push(s)})});
+ // Si no hay síntomas, ofrecer cross-selling puro según sinergias con lo comprado
+ bought.forEach(b=>SYN.forEach(s=>{const o=s[0]==b.id?s[1]:s[1]==b.id?s[0]:null;if(o){score[o]=score[o]||{pts:0,sy:[]};score[o].pts+=2}}));
+ Object.entries(score).sort((a,b)=>b[1].pts-a[1].pts).forEach(([id,sc])=>{
+  const p=byId[id],alerts=[],why=[];let block=null;
+  if(selB.has(id)){ if(days<20)block='Ya lo compró hace menos de 20 días: no ofrecer (salvo recompra planificada).'; else alerts.push({t:'warn',m:'Ya lo compró: ofrécelo solo como recompra planificada.'}); }
+  bought.forEach(b=>{if(b.id==id)return;const sh=shared(p,b);
+   if(sh.length>3)block=`Duplicidad alta con ${b.n}: ${sh.length} ingredientes compartidos (${sh.join(', ')}).`;
+   else if(sh.length){const nt=noteOf(p.id,b.id);alerts.push({t:'warn',m:`Revisar duplicidad con ${b.n}: comparten ${sh.join(', ')}.${nt?' '+nt:''}`})}
+   const sy=synOf(p.id,b.id);if(sy)why.push(`Combina con ${b.n} (${sy[2]}).`)});
+  if(sc.sy.length)why.unshift('Responde a: '+sc.sy.join(', ')+'.');
+  if(block){blocked.push({p,m:block});return}
+  results.push({p,alerts,why,phrase:pick(p,results.length)});
+ });
+ renderAll();
+}
+// Elige frase: premium -> lista premium; estándar -> lista estándar (rotando)
+function pick(p,i){const l=p.tier=='premium'?PREMIUM:STANDARD;return l[(P.indexOf(p)+i)%l.length]}
+
+/* ===== RENDER ===== */
+function priceTable(){
+ const unit=PRICES[2].map(v=>v/2);
+ let h='<table class="pr"><tr><th>Frascos</th><th>Basa</th><th>TM</th><th>FIZ</th></tr>';
+ for(let q=2;q<=10;q++){const cls=q==HOT?'hot':q==BEST?'best':'';
+  h+=`<tr class="${cls}"><td><b>${q}</b>${q==HOT?'<span class="tag">Más vendido</span>':''}${q==BEST?'<span class="tag">Mejor ahorro</span>':''}</td>`+
+  PRICES[q].map((v,c)=>{const s=Math.round(unit[c]*q-v);return `<td class="gold">${v}€${s>0?`<span class="sv">Ahorras ${s}€ al llevar ${q}</span>`:''}</td>`}).join('')+'</tr>'}
+ return h+'</table>'}
+function renderRecs(){
+ const f=$('cat').value,box=$('recs');
+ const list=results.filter(r=>!f||r.p.cat==f);
+ if(!results.length&&!blocked.length){return}
+ if(!list.length){box.innerHTML='<div class="empty">No hay oportunidades en esta categoría.</div>';return}
+ box.innerHTML=list.map(r=>`<div class="pc ${r.p.tier} ${offered.has(r.p.id)?'offered':''}">
+ <span class="badge ${r.p.tier=='premium'?'up':'cs'}">${r.p.tier=='premium'?'⭐ Upselling':'➕ Cross-selling'}</span><span class="badge">${r.p.cat}</span>
+ <h3>${r.p.n}</h3><div class="phrase">“${r.phrase}”</div>
+ <div style="font-size:.8rem;color:var(--muted)">${r.p.t} · ${r.p.pres}</div>
+ <div class="why">${r.why.join(' ')||'Complemento coherente con su perfil.'}</div>
+ ${r.alerts.map(a=>`<div class="alert ${a.t}">⚠️ ${a.m}</div>`).join('')}
+ ${priceTable()}
+ <div class="row"><button onclick="showScript('${r.p.id}')">🎙️ Ver guion</button><button onclick="copyScript('${r.p.id}')">📋 Copiar guion</button>
+ <button class="${offered.has(r.p.id)?'on':''}" onclick="toggleOffered('${r.p.id}')">${offered.has(r.p.id)?'✅ Ofrecido':'Marcar como ofrecido'}</button></div></div>`).join('');
+}
+function renderAvoid(){
+ $('avoid').innerHTML=blocked.length?`<div class="avoid"><h2>⚠️ Productos a EVITAR</h2>${blocked.map(b=>`<div class="alert bad">🚫 <b>${b.p.n}</b>: ${b.m}</div>`).join('')}</div>`:''}
+function renderAll(){
+ renderRecs();renderAvoid();
+ if(!results.length&&!blocked.length)$('recs').innerHTML='<div class="empty">Sin resultados: selecciona síntomas o productos.</div>';
+ else if(!results.length)$('recs').innerHTML='<div class="empty">Todas las opciones están bloqueadas. Revisa “Productos a EVITAR”.</div>';
+ if(results.length)showScript(results[0].p.id);else $('script').innerHTML='<div class="empty">Sin guion disponible.</div>';
+}
+function toggleOffered(id){offered.has(id)?offered.delete(id):offered.add(id);renderRecs()}
+
+/* ===== GUIONES ===== */
+function buildScript(id){
+ const r=results.find(x=>x.p.id==id),p=r.p,name=$('cname').value.trim()||'[Nombre]';
+ const last=[...selB].map(i=>byId[i].n)[0]||'tu último pedido';
+ const sy=[...selS][0]?[...selS][0].toLowerCase():'tu bienestar';
+ const objs={premium:['“Me lo pienso.”','Lo entiendo, y haces bien en pensarlo. Por eso te propongo empezar con el pack que mejor se adapte a ti: cuantos más frascos, menor es el precio por unidad, y puedes ajustarlo cuando quieras. Es un complemento alimenticio que va junto a una dieta equilibrada.'],
+ standard:['“Ya tomo muchas cosas.”','Te entiendo perfectamente. Precisamente por eso lo he revisado contra lo que ya tomas, para no duplicar ingredientes. Es un apoyo natural sencillo de añadir.']}[p.tier];
+ const steps=[
+ ['Introducción natural',`Hola ${name}, te llamo porque revisaba tu último pedido de ${last} y quería saber cómo te ha ido. ¿Lo estás notando cómodo en tu rutina?`],
+ ['Pregunta de descubrimiento',`Cuéntame, ¿cómo llevas últimamente lo de ${sy}? ¿Qué es lo que más te gustaría mejorar en tu día a día?`],
+ ['Presentación del producto',`Te comento porque tenemos ${r.phrase}: ${p.n}, que ${p.val}. Presentación: ${p.pres}.`],
+ ['Argumento de valor',`Como complemento alimenticio y apoyo natural, ${p.n} se integra con una dieta equilibrada y un estilo de vida saludable. ${r.why.join(' ')}`],
+ ['Objeción probable',`${objs[0]} → ${objs[1]}`],
+ ['Cierre sin presión',`Si te parece bien, ¿te lo preparo? O, si prefieres, ¿te lo envío con el próximo pedido? Tú decides, sin ningún compromiso.`]];
+ return steps.map((s,i)=>`${i+1}. ${s[0]}: ${s[1]}`);
+}
+function showScript(id){
+ const p=byId[id],st=buildScript(id);
+ $('script').innerHTML=`<b>${p.n}</b> · ⏱️ 2-3 min<ol class="script">`+st.map(s=>{const k=s.indexOf(': ');return `<li><b>${s.slice(s.indexOf(' ')+1,k)}</b><br>${s.slice(k+2)}</li>`}).join('')+'</ol>';
+}
+function copyScript(id){
+ const txt=`Guion Naturonica · ${byId[id].n}\n\n`+buildScript(id).join('\n\n')+'\n\nRecuerda: complemento alimenticio, no sustituye una dieta equilibrada.';
+ const done=()=>toast('📋 Guion copiado');
+ if(navigator.clipboard&&window.isSecureContext)navigator.clipboard.writeText(txt).then(done,()=>fb(txt,done));else fb(txt,done);
+}
+function fb(t,d){const a=document.createElement('textarea');a.value=t;document.body.appendChild(a);a.select();document.execCommand('copy');a.remove();d()}
+function toast(m){const t=$('toast');t.textContent=m;t.style.display='block';setTimeout(()=>t.style.display='none',1800)}
+
+$('gen').onclick=generate;
+$('clr').onclick=()=>{selB.clear();selS.clear();offered.clear();results=[];blocked=[];document.querySelectorAll('.chip.on').forEach(c=>c.classList.remove('on'));
+ $('recs').innerHTML='<div class="empty">Selecciona productos y síntomas y pulsa “Generar Oportunidades”.</div>';$('script').innerHTML='<div class="empty">El guion aparecerá aquí.</div>';$('avoid').innerHTML=''};
+</script>
+</body>
+</html>
